@@ -22,7 +22,7 @@ jobs:
           port: ${{ secrets.SERVER_SSH_PORT }}
           envs: FINAL_TAG
           script: |
-            cd ~/SkyHelpAlertBot || exit 1
+            cd ~/SkyHelp-Alert-Bot || exit 1
           
             git pull origin master || { echo "❌ Git pull failed"; exit 1; }
             
