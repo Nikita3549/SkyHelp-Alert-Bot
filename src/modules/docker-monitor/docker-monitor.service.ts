@@ -11,6 +11,9 @@ import { DEV_CONTAINERS_PREFIX } from './constants/dev-containers-prefix';
 @Injectable()
 export class DockerMonitorService implements OnModuleInit {
     private readonly docker: Docker;
+    private readonly alertCooldowns = new Map<string, number>();
+    private readonly ALERT_COOLDOWN_MS = 10 * 60 * 1000;
+    private lastEventTime: number = Math.floor(Date.now() / 1000);
     constructor(
         private readonly configService: ConfigService,
         private readonly alertService: AlertService,
@@ -21,16 +24,37 @@ export class DockerMonitorService implements OnModuleInit {
     }
 
     async onModuleInit() {
-        await this.checkExistingContainers();
-
         await this.startMonitoring();
+
+        await this.checkExistingContainers();
+    }
+
+    async getContainerLogs(containerId: string): Promise<string> {
+        try {
+            const container = this.docker.getContainer(containerId);
+
+            const logs = cleanDockerLogs(
+                await container.logs({
+                    stderr: true,
+                    stdout: true,
+                    tail: 500,
+                }),
+            );
+
+            return logs;
+        } catch (e: unknown) {
+            return `Could not fetch logs: 
+            ${JSON.stringify(e, null, 2)}`;
+        }
     }
 
     private async startMonitoring() {
         this.docker.getEvents(
             {
+                since: this.lastEventTime,
                 filters: {
-                    event: ['health_status'],
+                    event: ['health_status', 'die'],
+                    type: ['container'],
                 },
             },
             (error, stream) => {
@@ -49,40 +73,67 @@ export class DockerMonitorService implements OnModuleInit {
                     const event = JSON.parse(chunk.toString());
                     this.handleHealthEvent(event);
                 });
+
+                stream.on('end', () => {
+                    console.warn(
+                        'Docker event stream ended. Attempting to reconnect...',
+                    );
+                    this.handleReconnectConnection();
+                });
+
+                stream.on('error', (err) => {
+                    console.error('Docker event stream error:', err);
+                    this.handleReconnectConnection(err);
+                });
             },
         );
     }
+
+    async handleReconnectConnection(error?: unknown) {
+        await this.alertService.sendAlert(
+            new UnknownErrorAlert({
+                error:
+                    'Docker stream is empty' + error
+                        ? `${JSON.stringify(error, null, 2)}`
+                        : '',
+            }),
+        );
+    }
+
     private async handleHealthEvent(event: DockerEvent) {
         const container = event.Actor;
         const containerName = container.Attributes.name;
         const status = event.status.replace('health_status: ', '');
-
+        const eventName = event.Action;
         console.log(
             `${containerName} ${status.replace('health_status: ', '')}`,
         );
-        if (
-            status == 'unhealthy' &&
-            !status.startsWith(DEV_CONTAINERS_PREFIX)
-        ) {
+
+        if (status.startsWith(DEV_CONTAINERS_PREFIX)) {
+            return;
+        }
+        if (eventName == 'die') {
+            const exitCode = event.Actor.Attributes.exitCode;
+
+            if (exitCode == '0') {
+                return;
+            }
+
             await this.processUnhealthyContainer({
                 id: container.ID,
                 name: containerName,
             });
         }
-    }
-
-    async getContainerLogs(containerId: string): Promise<string> {
-        const container = this.docker.getContainer(containerId);
-
-        const logs = cleanDockerLogs(
-            await container.logs({
-                stderr: true,
-                stdout: true,
-                tail: 1000,
-            }),
-        );
-
-        return logs;
+        if (status === 'healthy') {
+            this.alertCooldowns.delete(container.ID);
+            return;
+        }
+        if (status == 'unhealthy') {
+            await this.processUnhealthyContainer({
+                id: container.ID,
+                name: containerName,
+            });
+        }
     }
 
     private async checkExistingContainers() {
@@ -115,6 +166,15 @@ export class DockerMonitorService implements OnModuleInit {
         id: string;
         name: string;
     }) {
+        const now = Date.now();
+        const lastAlertTime = this.alertCooldowns.get(container.id);
+
+        if (lastAlertTime && now - lastAlertTime < this.ALERT_COOLDOWN_MS) {
+            return;
+        }
+
+        this.alertCooldowns.set(container.id, now);
+
         await this.alertService.sendAlert(
             new UnhealthyContainerAlert({
                 containerName: container.name,

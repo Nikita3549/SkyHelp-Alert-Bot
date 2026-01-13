@@ -14,6 +14,7 @@ export interface DockerEvent {
         Attributes: {
             name: string;
             image: string;
+            exitCode: string;
             [key: string]: string;
         };
     };
