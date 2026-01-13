@@ -6,6 +6,8 @@ import { DockerMonitorModule } from './modules/docker-monitor/docker-monitor.mod
 import { ConfigModule } from '@nestjs/config';
 import { AlertModule } from './modules/alert/alert.module';
 import { ScheduleModule } from '@nestjs/schedule';
+import { HeartbeatModule } from './modules/heartbeat/heartbeat.module';
+import { SystemModule } from './modules/system/system.module';
 
 @Module({
     imports: [
@@ -18,6 +20,8 @@ import { ScheduleModule } from '@nestjs/schedule';
         DockerMonitorModule,
         AlertModule,
         ScheduleModule.forRoot(),
+        HeartbeatModule,
+        SystemModule,
     ],
     controllers: [AppController],
     providers: [AppService],

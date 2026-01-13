@@ -16,7 +16,7 @@ export class UnknownErrorAlert extends BaseAlert {
     getAttachment(): { source: Buffer; filename: string } | null {
         return {
             source: Buffer.from(this.data.error, 'utf-8'),
-            filename: `unknown_error-${formatDate(new Date(), 'yyyy-mm-dd_hh-mm-ss')}`,
+            filename: `unknown_error-${formatDate(new Date(), 'yyyy-mm-dd_hh-mm-ss')}.txt`,
         };
     }
 }

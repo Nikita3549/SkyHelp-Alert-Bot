@@ -14,7 +14,12 @@ export class AlertService {
         this.adminGroupId = this.configService.getOrThrow('ADMIN_GROUP_ID');
     }
 
-    async sendAlert(alert: BaseAlert) {
+    async sendAlert(
+        alert: BaseAlert,
+        options?: {
+            parse_mode: 'Markdown';
+        },
+    ) {
         const attachment = alert.getAttachment();
         if (attachment) {
             await this.bot.telegram.sendDocument(
@@ -28,6 +33,7 @@ export class AlertService {
             await this.bot.telegram.sendMessage(
                 this.adminGroupId,
                 alert.getText(),
+                options,
             );
         }
     }

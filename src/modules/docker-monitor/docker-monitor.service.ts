@@ -7,6 +7,7 @@ import { UnhealthyContainerAlert } from '../alert/definitions/alerts/unhealthy-c
 import { cleanDockerLogs } from './utils/clean-docker-logs.util';
 import { UnknownErrorAlert } from '../alert/definitions/alerts/unknown-error.alert';
 import { DEV_CONTAINERS_PREFIX } from './constants/dev-containers-prefix';
+import { IContainersStatus } from './interfaces/system-status.interface';
 
 @Injectable()
 export class DockerMonitorService implements OnModuleInit {
@@ -27,6 +28,29 @@ export class DockerMonitorService implements OnModuleInit {
         await this.startMonitoring();
 
         await this.checkExistingContainers();
+    }
+
+    async getContainersStatus(): Promise<IContainersStatus> {
+        const containers = await this.docker.listContainers();
+
+        const prodContainers = containers.filter(
+            (c) =>
+                !c.Names[0].replace('/', '').startsWith(DEV_CONTAINERS_PREFIX),
+        );
+
+        const total = prodContainers.length;
+        const running = prodContainers.filter(
+            (c) => c.State === 'running',
+        ).length;
+        const unhealthy = prodContainers.filter((c) =>
+            c.Status.includes('unhealthy'),
+        ).length;
+
+        return {
+            total,
+            running,
+            unhealthy,
+        };
     }
 
     async getContainerLogs(containerId: string): Promise<string> {
