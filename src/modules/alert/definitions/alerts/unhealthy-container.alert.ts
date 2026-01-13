@@ -7,7 +7,7 @@ interface IUnhealthyContainerAlertData {
 }
 
 export class UnhealthyContainerAlert extends BaseAlert {
-    data: IUnhealthyContainerAlertData;
+    private readonly data: IUnhealthyContainerAlertData;
     constructor(data: IUnhealthyContainerAlertData) {
         super();
         this.data = data;

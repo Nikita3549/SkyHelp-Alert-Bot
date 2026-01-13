@@ -5,6 +5,8 @@ import { DockerEvent } from './interfaces/docker-event.interface';
 import { AlertService } from '../alert/alert.service';
 import { UnhealthyContainerAlert } from '../alert/definitions/alerts/unhealthy-container.alert';
 import { cleanDockerLogs } from './utils/clean-docker-logs.util';
+import { UnknownErrorAlert } from '../alert/definitions/alerts/unknown-error.alert';
+import { DEV_CONTAINERS_PREFIX } from './constants/dev-containers-prefix';
 
 @Injectable()
 export class DockerMonitorService implements OnModuleInit {
@@ -19,6 +21,8 @@ export class DockerMonitorService implements OnModuleInit {
     }
 
     async onModuleInit() {
+        await this.checkExistingContainers();
+
         await this.startMonitoring();
     }
 
@@ -31,7 +35,13 @@ export class DockerMonitorService implements OnModuleInit {
             },
             (error, stream) => {
                 if (error || !stream) {
-                    console.error(error);
+                    this.alertService.sendAlert(
+                        new UnknownErrorAlert({
+                            error: error
+                                ? JSON.stringify(error, null, 2)
+                                : 'Empty variable stream',
+                        }),
+                    );
                     return;
                 }
 
@@ -50,13 +60,14 @@ export class DockerMonitorService implements OnModuleInit {
         console.log(
             `${containerName} ${status.replace('health_status: ', '')}`,
         );
-        if (status == 'unhealthy') {
-            await this.alertService.sendAlert(
-                new UnhealthyContainerAlert({
-                    containerName,
-                    logs: await this.getContainerLogs(container.ID),
-                }),
-            );
+        if (
+            status == 'unhealthy' &&
+            !status.startsWith(DEV_CONTAINERS_PREFIX)
+        ) {
+            await this.processUnhealthyContainer({
+                id: container.ID,
+                name: containerName,
+            });
         }
     }
 
@@ -67,9 +78,48 @@ export class DockerMonitorService implements OnModuleInit {
             await container.logs({
                 stderr: true,
                 stdout: true,
+                tail: 1000,
             }),
         );
 
         return logs;
+    }
+
+    private async checkExistingContainers() {
+        try {
+            const containers = await this.docker.listContainers();
+
+            for (const containerInfo of containers) {
+                const containerName = containerInfo.Names[0].replace('/', '');
+                if (
+                    containerInfo.Status.includes('unhealthy') &&
+                    !containerName.startsWith(DEV_CONTAINERS_PREFIX)
+                ) {
+                    await this.processUnhealthyContainer({
+                        id: containerInfo.Id,
+                        name: containerName,
+                    });
+                }
+            }
+        } catch (e: unknown) {
+            await this.alertService.sendAlert(
+                new UnknownErrorAlert({
+                    error: `Failed to check existing containers 
+                    ${JSON.stringify(e, null, 2)}`,
+                }),
+            );
+        }
+    }
+
+    private async processUnhealthyContainer(container: {
+        id: string;
+        name: string;
+    }) {
+        await this.alertService.sendAlert(
+            new UnhealthyContainerAlert({
+                containerName: container.name,
+                logs: await this.getContainerLogs(container.id),
+            }),
+        );
     }
 }
