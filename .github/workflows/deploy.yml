@@ -26,6 +26,6 @@ jobs:
           
             git pull origin master || { echo "❌ Git pull failed"; exit 1; }
             
-            docker compose up --build
+            docker compose up --build -d
             
             echo "✅ Deployment complete"
