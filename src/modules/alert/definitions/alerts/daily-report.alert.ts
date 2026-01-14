@@ -2,6 +2,7 @@ import { BaseAlert } from '../base-alert';
 import { IRamStatus } from '../../../system/interfaces/ram-status.interface';
 import { IContainersStatus } from '../../../docker-monitor/interfaces/system-status.interface';
 import { ISSDStatus } from '../../../system/interfaces/ssd-status.interface';
+import { ISendAlertOptions } from '../../interfaces/send-alert-options.interface';
 
 interface IDailyReportData {
     ramStatus: IRamStatus;
@@ -53,5 +54,11 @@ export class DailyReportAlert extends BaseAlert {
         ].join('\n');
 
         return message;
+    }
+
+    getOptions(): ISendAlertOptions | undefined {
+        return {
+            parse_mode: 'Markdown',
+        };
     }
 }

@@ -8,6 +8,7 @@ import { cleanDockerLogs } from './utils/clean-docker-logs.util';
 import { UnknownErrorAlert } from '../alert/definitions/alerts/unknown-error.alert';
 import { DEV_CONTAINERS_PREFIX } from './constants/dev-containers-prefix';
 import { IContainersStatus } from './interfaces/system-status.interface';
+import { ContainerIssue } from './enums/container-issue.enum';
 
 @Injectable()
 export class DockerMonitorService implements OnModuleInit {
@@ -143,9 +144,10 @@ export class DockerMonitorService implements OnModuleInit {
                 return;
             }
 
-            await this.processUnhealthyContainer({
+            await this.processIssuedContainer({
                 id: container.ID,
                 name: containerName,
+                issue: ContainerIssue.Dead,
             });
         }
         if (status === 'healthy') {
@@ -153,9 +155,10 @@ export class DockerMonitorService implements OnModuleInit {
             return;
         }
         if (status == 'unhealthy') {
-            await this.processUnhealthyContainer({
+            await this.processIssuedContainer({
                 id: container.ID,
                 name: containerName,
+                issue: ContainerIssue.Unhealthy,
             });
         }
     }
@@ -170,9 +173,10 @@ export class DockerMonitorService implements OnModuleInit {
                     containerInfo.Status.includes('unhealthy') &&
                     !containerName.startsWith(DEV_CONTAINERS_PREFIX)
                 ) {
-                    await this.processUnhealthyContainer({
+                    await this.processIssuedContainer({
                         id: containerInfo.Id,
                         name: containerName,
+                        issue: ContainerIssue.Unhealthy,
                     });
                 }
             }
@@ -186,9 +190,10 @@ export class DockerMonitorService implements OnModuleInit {
         }
     }
 
-    private async processUnhealthyContainer(container: {
+    private async processIssuedContainer(container: {
         id: string;
         name: string;
+        issue: ContainerIssue;
     }) {
         const now = Date.now();
         const lastAlertTime = this.alertCooldowns.get(container.id);
@@ -203,6 +208,7 @@ export class DockerMonitorService implements OnModuleInit {
             new UnhealthyContainerAlert({
                 containerName: container.name,
                 logs: await this.getContainerLogs(container.id),
+                issue: container.issue,
             }),
         );
     }

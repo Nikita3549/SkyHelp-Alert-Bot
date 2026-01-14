@@ -22,7 +22,6 @@ export class HeartbeatService {
 
         await this.alertService.sendAlert(
             new DailyReportAlert({ containersStatus, ssdStatus, ramStatus }),
-            { parse_mode: 'Markdown' },
         );
     }
 }
