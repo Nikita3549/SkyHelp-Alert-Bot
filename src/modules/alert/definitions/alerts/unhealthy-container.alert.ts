@@ -22,7 +22,7 @@ export class UnhealthyContainerAlert extends BaseAlert {
             `────────────────────`,
             `📦 Container: \`${this.data.containerName}\``,
             `📊 Status: 'UNHEALTHY'`,
-            `⏰ Time: ${new Date().toLocaleString('ru-RU')}`,
+            `⏰ Time: ${new Date().toLocaleString('ru-RU', { timeZone: 'Europe/Moscow' })}}`,
             `────────────────────`,
         ].join('\n');
         return message;

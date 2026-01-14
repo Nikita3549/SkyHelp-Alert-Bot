@@ -13,7 +13,7 @@ export class HeartbeatService {
         private readonly systemService: SystemService,
     ) {}
 
-    @Cron(CronExpression.EVERY_DAY_AT_9AM)
+    @Cron(CronExpression.EVERY_DAY_AT_6AM)
     private async sendDailyReport() {
         const containersStatus =
             await this.dockerMonitorService.getContainersStatus();

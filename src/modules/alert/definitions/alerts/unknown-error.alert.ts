@@ -14,9 +14,12 @@ export class UnknownErrorAlert extends BaseAlert {
         return `⚠️ Unknown Alert Bot Error detected`;
     }
     getAttachment(): { source: Buffer; filename: string } | null {
+        const mskDate = new Date(
+            new Date().toLocaleString('en-US', { timeZone: 'Europe/Moscow' }),
+        );
         return {
             source: Buffer.from(this.data.error, 'utf-8'),
-            filename: `unknown_error-${formatDate(new Date(), 'yyyy-mm-dd_hh-mm-ss')}.txt`,
+            filename: `unknown_error-${formatDate(mskDate, 'yyyy-mm-dd_hh-mm-ss')}.txt`,
         };
     }
 }
