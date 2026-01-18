@@ -25,6 +25,7 @@
     "@nestjs/core": "^11.0.1",
     "@nestjs/platform-express": "^11.0.1",
     "@nestjs/schedule": "^6.1.0",
+    "axios": "^1.13.2",
     "check-disk-space": "^3.4.0",
     "dockerode": "^4.0.9",
     "nestjs-telegraf": "^2.9.1",
