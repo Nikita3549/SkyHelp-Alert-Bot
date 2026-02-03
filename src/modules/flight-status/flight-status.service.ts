@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { IFlightStatusStats } from './interfaces/flight-status-stats.interface';
 import { Pool } from 'pg';
 import { ConfigService } from '@nestjs/config';
+import { FlightStatusSource } from './enums/flight-status-source.enum';
 
 @Injectable()
 export class FlightStatusService {
@@ -19,20 +20,29 @@ export class FlightStatusService {
     async getStats(): Promise<IFlightStatusStats> {
         const { rows } = await this.pool.query<{
             month: string;
+            source: string;
             total: string;
         }>(
-            `SELECT TRIM(TO_CHAR(requested_at, 'Month')) as month, COUNT(*) as total
-             FROM stats_flight_status_requests
-             GROUP BY month
-             ORDER BY month DESC`,
+            `SELECT 
+            TRIM(TO_CHAR(requested_at, 'Month')) as month, 
+            "flightStatusSource" as source,
+            COUNT(*) as total
+         FROM stats_flight_status_requests
+         GROUP BY month, "flightStatusSource"
+         ORDER BY month DESC, total DESC`,
         );
-        const { rows: total } = await this.pool.query<{
-            count: number;
+
+        const { rows: totalRows } = await this.pool.query<{
+            count: string;
         }>(`SELECT COUNT(*) FROM stats_flight_status_requests`);
 
         return {
-            total: total[0].count,
-            monthly: rows.map((r) => ({ month: r.month, amount: +r.total })),
+            total: parseInt(totalRows[0].count, 10),
+            monthly: rows.map((r) => ({
+                month: r.month,
+                source: r.source as FlightStatusSource,
+                amount: parseInt(r.total, 10),
+            })),
         };
     }
 }

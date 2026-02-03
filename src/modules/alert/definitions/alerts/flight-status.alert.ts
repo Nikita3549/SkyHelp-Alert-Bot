@@ -1,6 +1,7 @@
-import { BaseAlert } from '../base-alert';
 import { ISendAlertOptions } from '../../interfaces/send-alert-options.interface';
+import { FlightStatusSource } from '../../../flight-status/enums/flight-status-source.enum';
 import { IFlightStatusStats } from '../../../flight-status/interfaces/flight-status-stats.interface';
+import { BaseAlert } from '../base-alert';
 
 export class FlightStatusAlert extends BaseAlert {
     private readonly stats: IFlightStatusStats;
@@ -10,25 +11,61 @@ export class FlightStatusAlert extends BaseAlert {
         this.stats = stats;
     }
 
+    private escape(text: string | number): string {
+        return String(text).replace(/[-._*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
     getText(): string {
         const { total, monthly } = this.stats;
 
-        const monthlySection = monthly.map((item) => {
-            return `*${item.month}:* ${item.amount}`;
+        const totalBySource = {} as Record<FlightStatusSource, number>;
+        Object.values(FlightStatusSource).forEach(
+            (s) => (totalBySource[s] = 0),
+        );
+
+        const monthsMap = new Map<string, Record<FlightStatusSource, number>>();
+
+        monthly.forEach((item) => {
+            if (!monthsMap.has(item.month)) {
+                const initialSources = {} as Record<FlightStatusSource, number>;
+                Object.values(FlightStatusSource).forEach(
+                    (s) => (initialSources[s] = 0),
+                );
+                monthsMap.set(item.month, initialSources);
+            }
+            const monthData = monthsMap.get(item.month)!;
+            monthData[item.source] = item.amount;
+            totalBySource[item.source] += item.amount;
         });
 
-        const message = [
-            `✈️ *Flight Status Requests*`,
-            '',
-            `📊 *Total Requests:* ${total}`,
-            '',
-            `🗓 *Monthly requests:*`,
-            ...monthlySection,
-        ]
-            .filter((m) => typeof m === 'string')
+        const formatLine = (source: string, amount: number, indent = '') => {
+            const name = source.replace(/_/g, ' ');
+            return `${indent}· _${this.escape(name)}:_ ${this.escape(amount)}`;
+        };
+
+        const totalLines = Object.entries(totalBySource)
+            .map(([source, amount]) => formatLine(source, amount))
             .join('\n');
 
-        return message;
+        const monthlySections: string[] = [];
+        monthsMap.forEach((sources, month) => {
+            const sourceLines = Object.entries(sources)
+                .map(([source, amount]) => formatLine(source, amount, '  '))
+                .join('\n');
+
+            monthlySections.push(`*${this.escape(month)}:*\n${sourceLines}`);
+        });
+
+        return [
+            `✈️ *Flight Status Requests*`,
+            '',
+            `📊 *Total Requests:* ${this.escape(total)}`,
+            totalLines,
+            '',
+            `🗓 *Monthly requests breakdown:*`,
+            '',
+            ...monthlySections,
+        ].join('\n');
     }
 
     getOptions(): ISendAlertOptions | undefined {
