@@ -1,3 +1,3 @@
 export interface ISendAlertOptions {
-    parse_mode: 'Markdown';
+    parse_mode: 'Markdown' | 'MarkdownV2';
 }

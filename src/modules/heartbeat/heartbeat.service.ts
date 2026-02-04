@@ -13,6 +13,7 @@ import { IContainersStatus } from '../docker-monitor/interfaces/system-status.in
 import { IExternalApiStatus } from '../external-api/interfaces/external-api-status.interface';
 import { FlightStatusAlert } from '../alert/definitions/alerts/flight-status.alert';
 import { FlightStatusService } from '../flight-status/flight-status.service';
+import { ExternalAiServerService } from '../external-ai-server/external-ai-server.service';
 
 @Update()
 @Injectable()
@@ -23,6 +24,7 @@ export class HeartbeatService {
         private readonly systemService: SystemService,
         private readonly externalApiService: ExternalApiService,
         private readonly flightStatusService: FlightStatusService,
+        private readonly externalAiServerService: ExternalAiServerService,
     ) {}
 
     @Cron(CronExpression.EVERY_DAY_AT_6AM)
@@ -33,6 +35,11 @@ export class HeartbeatService {
                 sayGoodMorning: true,
             }),
         );
+    }
+
+    @Cron(CronExpression.EVERY_MINUTE)
+    private async pingAiServer() {
+        await this.externalAiServerService.ping();
     }
 
     @Command('flights_status')

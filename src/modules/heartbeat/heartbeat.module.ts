@@ -5,6 +5,7 @@ import { AlertModule } from '../alert/alert.module';
 import { SystemModule } from '../system/system.module';
 import { ExternalApiModule } from '../external-api/external-api.module';
 import { FlightStatusModule } from '../flight-status/flight-status.module';
+import { ExternalAiServerModule } from '../external-ai-server/external-ai-server.module';
 
 @Module({
     imports: [
@@ -13,6 +14,7 @@ import { FlightStatusModule } from '../flight-status/flight-status.module';
         SystemModule,
         ExternalApiModule,
         FlightStatusModule,
+        ExternalAiServerModule,
     ],
     providers: [HeartbeatService],
 })

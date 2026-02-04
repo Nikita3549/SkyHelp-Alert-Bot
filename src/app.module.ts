@@ -10,6 +10,7 @@ import { HeartbeatModule } from './modules/heartbeat/heartbeat.module';
 import { SystemModule } from './modules/system/system.module';
 import { ExternalApiModule } from './modules/external-api/external-api.module';
 import { FlightStatusModule } from './modules/flight-status/flight-status.module';
+import { ExternalAiServerModule } from './modules/external-ai-server/external-ai-server.module';
 
 @Module({
     imports: [
@@ -26,6 +27,7 @@ import { FlightStatusModule } from './modules/flight-status/flight-status.module
         SystemModule,
         ExternalApiModule,
         FlightStatusModule,
+        ExternalAiServerModule,
     ],
     controllers: [AppController],
     providers: [AppService],
